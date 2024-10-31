@@ -108,6 +108,27 @@ class CarService:
                string = f'{element.sale_id},{element.position_in_file_sales}'.ljust(50)
                index_file.write(string + '\n')
         
+        # читаем индекс
+        with open(self._format_path('cars_index.txt'), 'r', encoding='utf-8') as index_file:
+            ci_string: list[str] = index_file.readlines()
+            #print(ci_string)
+            target_string = -1
+            for element in ci_string:
+                vin, line_number = element.strip().split(',')
+                if vin == sale.car_vin:
+                    target_string = int(line_number)
+                    break
+            if target_string == -1:
+                raise ValueError('Машина не найдена')
+
+            print(target_string)
+        with open(self._format_path('cars.txt'), 'r+', encoding='utf-8') as car_file:
+            car_file.seek(target_string * 501)
+            car_line = car_file.readline()
+            car_arr = car_line.strip().split(',')
+            print(car_arr)
+        
+
             
 
     # Задание 3. Доступные к продаже
