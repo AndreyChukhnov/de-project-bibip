@@ -111,23 +111,36 @@ class CarService:
         # читаем индекс
         with open(self._format_path('cars_index.txt'), 'r', encoding='utf-8') as index_file:
             ci_string: list[str] = index_file.readlines()
-            #print(ci_string)
             target_string = -1
+            # print(f"Ищем VIN: {sale.car_vin}")
             for element in ci_string:
                 vin, line_number = element.strip().split(',')
-                if vin == sale.car_vin:
+                if vin.strip() == sale.car_vin:
                     target_string = int(line_number)
+                    # print(f'Найден VIN: {vin}, строка: {line_number}')
                     break
             if target_string == -1:
                 raise ValueError('Машина не найдена')
 
-            print(target_string)
         with open(self._format_path('cars.txt'), 'r+', encoding='utf-8') as car_file:
-            car_file.seek(target_string * 501)
+            car_file.seek(target_string * 502)
             car_line = car_file.readline()
             car_arr = car_line.strip().split(',')
-            print(car_arr)
-        
+           # print(car_arr)
+            car = Car(
+                vin=str(car_arr[0]), 
+                model=int(car_arr[1]), 
+                price = Decimal(car_arr[2]), 
+                date_start = datetime.strptime(car_arr[3], "%Y-%m-%d %H:%M:%S"), 
+                status=CarStatus(car_arr[4])
+                )
+            car.status = CarStatus.sold
+            car_file.seek(target_string * 502)
+            correct_line = f'{car.vin},{car.model},{car.price},{car.date_start},{car.status}'.ljust(500)
+            car_file.write(correct_line + '\n')
+            # print(car)
+            
+        return car
 
             
 
@@ -150,22 +163,86 @@ class CarService:
 
     # Задание 4. Детальная информация
     def get_car_info(self, vin: str) -> CarFullInfo | None:
-        # with open(self._format_path('cars_index.txt'), 'r') as index_file:
-        #     lines: list[str] = index_file.readlines()
+        # Читаем файл с индесами
+        with open(self._format_path('cars_index.txt'), 'r') as index_file:
+            lines: list[str] = index_file.readlines()
 
-        # target_line = -1
-        # for line in lines:
-        #     car_id, line_number = line.strip().split(',')
-        #     if car_id == vin:
-        #         target_line = int(line_number)
-        #         break
-        # if target_line == -1:
-        #     return None
-        # print(target_line)
-        raise NotImplementedError
-            
+        # Определяем номер строки 
+        target_line = -1
+        for line in lines:
+            car_id, line_number = line.strip().split(',')
+            if car_id == vin:
+                target_line = int(line_number)
+                break
+        if target_line == -1:
+            return None
 
+        # Читаем строку в файле cars.txt
+        with open(self._format_path('cars.txt'), 'r', encoding='utf-8') as car_file:
+            car_file.seek(target_line * 502)
+            car_line = car_file.readline()
+            car_arr = car_line.strip().split(',')
+            print(car_arr)
+
+        model_id = int(car_arr[1])
+
+        # Читаем индекс для определения номера строки в файде models.txt
+        with open(self._format_path('models_index.txt'), 'r', encoding='utf-8') as mi_file:
+            mi_file_lines: list[str] = mi_file.readlines()
+
+        # определяем номер строки в файле models.txt
+        model_target_line = -1
+        for line in mi_file_lines:
+            m_id, line_number = line.strip().split(',')
+            if model_id == int(m_id):
+                model_target_line = int(line_number)
+                break
+        if model_target_line == -1:
+            raise ValueError('Неправильный VIN')
+        
+        # Читаем cnhjre d файлt models.txt
+        with open(self._format_path('models.txt'), 'r', encoding='utf-8') as model_file:
+            model_file.seek(model_target_line * 502)
+            model_line = model_file.readline()
+            model_arr = model_line.strip().split(',')
+            print(model_arr)
+        
+        if  str(car_arr[4]) != CarStatus.sold:
+            s_date = None
+            s_cost = None
+        else:
+            # Читаем индекс с продажами для определения строки в файле sales.txt
+            with open(self._format_path('sales_index.txt'), 'r', encoding='utf-8') as si_file:
+                si_file_lines: list[str] = si_file.readlines()
             
+            sale_target_line = -1
+            for line in si_file_lines:
+                si_vin, line_number = line.rstrip().split(',')
+                if si_vin == vin:
+                    sale_target_line = int(line_number)
+                    break
+            if sale_target_line == -1:
+                raise ValueError('Неправильный VIN')
+            
+            # Читаем  файл  с продажами
+            with open(self._format_path('sales.txt'), 'r', encoding='utf-8') as sale_file:
+                sale_file.seek(sale_target_line * 502)
+                sale_line = sale_file.readline()
+                sale_arr = sale_line.strip().split(',')
+                print(sale_arr)
+                s_date = datetime.strptime(sale_arr[2], "%Y-%m-%d %H:%M:%S")
+                s_cost =Decimal(sale_arr[3])
+
+        return CarFullInfo(
+            vin= str(car_arr[0]),
+            car_model_name= str(model_arr[1]),
+            car_model_brand= str(model_arr[2]),
+            price= Decimal(car_arr[2]),
+            date_start= datetime.strptime(car_arr[3], "%Y-%m-%d %H:%M:%S"),
+            status= CarStatus(car_arr[4]),
+            sales_date= s_date,
+            sales_cost= s_cost
+        )
 
     # Задание 5. Обновление ключевого поля
     def update_vin(self, vin: str, new_vin: str) -> Car:
@@ -178,3 +255,5 @@ class CarService:
     # Задание 7. Самые продаваемые модели
     def top_models_by_sales(self) -> list[ModelSaleStats]:
         raise NotImplementedError
+
+    
