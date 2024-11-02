@@ -18,6 +18,7 @@ class Car(BaseModel):
     price: Decimal
     date_start: datetime
     status: CarStatus
+    is_deleted: bool = False
 
     def index(self) -> str:
         return self.vin
